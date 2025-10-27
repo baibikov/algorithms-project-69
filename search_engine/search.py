@@ -38,13 +38,22 @@ def search(docs: list[Doc], query: str) -> list[str]:
         []
     """
 
+    # подготавливаем документы
+    # определяем токены документов
     processed_docs = _preprocessing(docs)
+    # подготавливаем запрос
+    # определяем токен запроса
     query_tokens = _preprocessing_text(query)
+    # ищем релевантные документы
+    processed_searched_docs = _preprocessing_search(processed_docs, query_tokens)
+    # производим расчет релевантности по алгоритму: TF (Term Frequency)
+    ranked_docs = _calculate_rank_by_tf(processed_searched_docs, query_tokens)
+    # сортируем рассчитанные документы
+    sorted_ranked_docs = _sort_ranked_docs(ranked_docs)
 
     return [
         doc.id
-        for doc in processed_docs
-        if any(x in doc.tokens for x in query_tokens)
+        for doc in sorted_ranked_docs
     ]
 
 
@@ -78,3 +87,40 @@ def _preprocessing_text(text: str) -> list[str]:
         term = re.findall(r'\w+', word)
         res.append(''.join(term).lower())
     return res
+
+
+def _preprocessing_search(
+        docs: list[_ProcessingDoc], query_tokens: list[str]) -> list[_ProcessingDoc]:
+    return [
+        doc
+        for doc in docs
+        if any(x in doc.tokens for x in query_tokens)
+    ]
+
+
+@dataclass
+class _RankedDoc:
+    """
+     Структура для представления документа с рассчитанным рангом релевантности.
+
+     Используется для хранения результатов этапа ранжирования перед финальной сортировкой.
+
+     Attributes:
+         id (str): Уникальный идентификатор документа
+         tokens (list[str]): Обработанные токены текстового содержания документа
+         rank (float): Расчет релевантности (например, TF, TF-IDF, BM25 score)
+     """
+    id: str
+    tokens: list[str]
+    rank: float
+
+
+def _calculate_rank_by_tf(docs: list[_ProcessingDoc], query_tokens: list[str]) -> list[_RankedDoc]:
+    return [
+        _RankedDoc(doc.id, doc.tokens, len(list(filter(lambda x: x in query_tokens, doc.tokens))))
+        for doc in docs
+    ]
+
+
+def _sort_ranked_docs(docs: list[_RankedDoc]) -> list[_RankedDoc]:
+    return sorted(docs, key=lambda doc: doc.rank, reverse=True)
