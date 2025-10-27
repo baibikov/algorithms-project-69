@@ -3,6 +3,7 @@
 """
 from search_engine.search import Doc, search
 
+
 def test_search_hello():
     docs = [
         Doc("1", "hello world"),
@@ -10,6 +11,7 @@ def test_search_hello():
         Doc("3", "world hello"),
     ]
     assert search(docs, "hello") == ["1", "3"]
+
 
 def test_search_not_found():
     docs = [Doc("1", "foo bar")]
@@ -43,3 +45,40 @@ def test_search_space():
         Doc("1", "      "),
     ]
     assert search(docs, " ") == []
+
+
+def test_search_preprocessing():
+    docs = [
+        Doc("1", "foo... bar!"),
+    ]
+    assert search(docs, "foo") == ["1"]
+    assert search(docs, "foo...") == ["1"]
+    assert search(docs, "bar") == ["1"]
+    assert search(docs, "bar!") == ["1"]
+
+    docs = [
+        Doc("1", "Hello!!!! _WorlD"),
+        Doc("2", "hellow world"),  # not in result
+    ]
+    assert search(docs, "hello") == ["1"]
+
+
+def test_search_multiple_words():
+    docs = [
+        Doc("1", "hello world"),
+        Doc("2", "Hello!!!! _WorlD"),
+        Doc("3", "hellow world"),
+        Doc("4", "hellow worldw"),
+    ]
+    assert search(docs, "hello world") == ["1", "2", "3"]
+
+
+def test_search_requirements_doc():
+    """
+    Тут лежат тесты описанные в требовании
+    """
+    docs = [
+        Doc("doc1", "I can't shoot straight unless I've had a pint!"),
+    ]
+    assert search(docs, "pint") == ["doc1"]
+    assert search(docs, "pint!") == ["doc1"]
