@@ -100,3 +100,12 @@ def test_search_same_rank():
         Doc("doc3", "Don't shoot shoot shoot that thing at me.."),
     ]
     assert search(docs, "shoot") == ["doc1", "doc2", "doc3"]
+
+
+def test_search_ranking_with_fuzzing():
+    docs = [
+        Doc("doc1", "I can't shoot straight unless I've had a pint!"),
+        Doc("doc2", "Don't shoot shoot shoot that thing at me."),
+        Doc("doc3", "I'm your shooter."),
+    ]
+    assert search(docs, "shoot at me") == ["doc2", "doc1"]
