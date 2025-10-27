@@ -82,3 +82,21 @@ def test_search_requirements_doc():
     ]
     assert search(docs, "pint") == ["doc1"]
     assert search(docs, "pint!") == ["doc1"]
+
+
+def test_search_ranking():
+    docs = [
+        Doc("doc1", "I can't shoot straight unless I've had a pint!"),
+        Doc("doc2", "Don't shoot shoot shoot that thing at me."),
+        Doc("doc3", "I'm your shooter."),
+    ]
+    assert search(docs, "shoot") == ["doc2", "doc1"]
+
+
+def test_search_same_rank():
+    docs = [
+        Doc("doc1", "Don't shoot shoot shoot that thing at me."),
+        Doc("doc2", "Don't shoot shoot shoot that thing at me."),
+        Doc("doc3", "Don't shoot shoot shoot that thing at me.."),
+    ]
+    assert search(docs, "shoot") == ["doc1", "doc2", "doc3"]

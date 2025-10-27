@@ -1,4 +1,4 @@
 [MAIN]
 ignore=CVS
 ignore-patterns=^\.venv/
-disable=C0116
+disable=C0116,C0114
