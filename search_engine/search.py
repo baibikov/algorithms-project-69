@@ -44,10 +44,12 @@ def search(docs: list[Doc], query: str) -> list[str]:
     # подготавливаем запрос
     # определяем токен запроса
     query_tokens = _preprocessing_text(query)
-    # ищем релевантные документы
-    processed_searched_docs = _preprocessing_search(processed_docs, query_tokens)
+    # создаем обратный индекс для документов
+    reverse_index = _make_reverse_index(processed_docs)
+    # фильтруем значения по индексу
+    filtered_processed_docs = _filter_reverse_index_processing_docs(reverse_index, query_tokens)
     # производим расчет релевантности по алгоритму: TF (Term Frequency)
-    ranked_docs = _calculate_rank_by_tf(processed_searched_docs, query_tokens)
+    ranked_docs = _calculate_rank_by_tf(filtered_processed_docs, query_tokens)
     # сортируем рассчитанные документы
     sorted_ranked_docs = _sort_ranked_docs(ranked_docs)
 
@@ -89,13 +91,32 @@ def _preprocessing_text(text: str) -> list[str]:
     return res
 
 
-def _preprocessing_search(
-        docs: list[_ProcessingDoc], query_tokens: list[str]) -> list[_ProcessingDoc]:
-    return [
-        doc
-        for doc in docs
-        if any(x in doc.tokens for x in query_tokens)
-    ]
+@dataclass
+class _ReverseIndex:
+    """
+    Attributes:
+         index (dict[str, _ProcessingDoc): Представляет собой обратный индекс,
+            где ключом является слово, а значением ссылки на преобразованные документы.
+            _ProcessingDoc необходим для дальнейшей работы с документами.
+    """
+    index: dict[str, list[_ProcessingDoc]]
+
+
+def _make_reverse_index(docs: list[_ProcessingDoc]) -> _ReverseIndex:
+    index: dict[str, list[_ProcessingDoc]] = {}
+    for doc in docs:
+        for word in doc.tokens:
+            index.setdefault(word, []).append(doc)
+    return _ReverseIndex(index)
+
+
+def _filter_reverse_index_processing_docs(reverse_index: _ReverseIndex,
+                                          filter_keys: list[str]) -> list[_ProcessingDoc]:
+    unique_docs: dict[str, _ProcessingDoc] = {}
+    for word in filter_keys:
+        for doc in reverse_index.index.get(word, []):
+            unique_docs.setdefault(doc.id, doc)
+    return list(unique_docs.values())
 
 
 @dataclass
