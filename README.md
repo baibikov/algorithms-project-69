@@ -16,7 +16,7 @@ algorithms-project-69/
 │
 ├── search_engine/       # Основная логика поискового движка
 ├── tests/               # Тесты к публичному интерфейсу
-├── requirements.txt     # Зависимости проекта
+├── uv.lock              # Зависимости проекта
 ├── README.md
 └── ...
 ```
@@ -25,8 +25,6 @@ algorithms-project-69/
 
 ## Установка локального окружения
 
-Рекомендуется использовать Python 3.14+ и виртуальное окружение для изоляции зависимостей.
-
 ### 1. Клонировать репозиторий
 
 ```
@@ -34,37 +32,28 @@ git https://github.com/baibikov/algorithms-project-69.git
 cd algorithms-project-69
 ```
 
-### 2. Создать и активировать виртуальное окружение
+### 2. Установить uv менеджером пакетов
 
 **Linux / macOS**
 
 ```
-python3 -m venv venv
-source venv/bin/activate
-```
-
-**Windows**
-
-```
-python -m venv venv
-venv\Scripts\activate
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 ### 3. Установить зависимости
 
 ```
-pip install --upgrade pip
-pip install -r requirements.txt
+make install 
 ```
 
 ---
 
 ## Запуск линтера
 
-Для проверки качества кода используется `pylint`:
+Для проверки качества кода используется `ruff`:
 
 ```
-pylint search_engine tests
+make lint
 ```
 
 ---
@@ -74,7 +63,7 @@ pylint search_engine tests
 Для тестирования проекта используется `pytest`:
 
 ```
-pytest .
+make test
 ```
 
 ---
