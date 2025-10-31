@@ -1,3 +1,5 @@
+from typing import overload
+
 from .find import _find_tokenized_documents
 from .indexing import _build_tokenized_inverted_index
 from .ranking import _sorted_rank_tokenize_documents
@@ -5,7 +7,17 @@ from .tokenize import _tokenize_documents, _tokenize_text
 from .types import Document
 
 
-def search(docs: list[Document], query: str) -> list[str]:
+# @overload is used only for type checking and IDE hints;
+# it does NOT create separate functions at runtime.
+@overload
+def search(docs: list[Document], query: str) -> list[str]: ...
+
+
+@overload
+def search(docs: list[dict[str, str]], query: str) -> list[str]: ...
+
+
+def search(untyped_docs, query: str) -> list[str]:
     """
     Search for documents that match the given query and return their IDs sorted by relevance.
 
@@ -19,7 +31,7 @@ def search(docs: list[Document], query: str) -> list[str]:
 
     Parameters
     ----------
-    docs : list[Document]
+    untyped_docs : list[Document]
         List of documents to search in. Each Document must have 'id' and 'text' attributes.
     query : str
         The search query string provided by the user.
@@ -52,8 +64,10 @@ def search(docs: list[Document], query: str) -> list[str]:
     >>> search(documents, "")
     []
     """
-    if not docs or not query:
+    if not untyped_docs or not query:
         return []
+
+    docs = [Document(d["id"], d["text"]) for d in untyped_docs]
 
     tokenized_documents = _tokenize_documents(docs)
     if not tokenized_documents:
