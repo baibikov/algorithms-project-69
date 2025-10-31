@@ -60,3 +60,10 @@ def test_search_sort_by_score():
         Document("id_7", "cat plays with a yarn ball"),
     ]
     assert search(docs, "dog ball") == ["id_5", "id_6", "id_7"]
+
+
+def test_search_untyped_docs():
+    docs = [
+        {"id": "1", "text": "foo"},
+    ]
+    assert search(docs, "foo") == ["1"]
