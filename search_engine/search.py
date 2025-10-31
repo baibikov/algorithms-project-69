@@ -1,147 +1,75 @@
-"""
-Модуль search_engine
-содержит классы и функции для работы с поисковым движком.
-"""
-import re
-from dataclasses import dataclass
+from .find import _find_tokenized_documents
+from .indexing import _build_tokenized_inverted_index
+from .ranking import _sorted_rank_tokenize_documents
+from .tokenize import _tokenize_documents, _tokenize_text
+from .types import Document
 
 
-@dataclass
-class Doc:
+def search(docs: list[Document], query: str) -> list[str]:
     """
-    Типизированная структура представления документа.
+    Search for documents that match the given query and return their IDs sorted by relevance.
 
-    Attributes:
-        id (str): Идентификатор документа
-        text (str): Текстовая содержимое документа
+    This function performs the full search pipeline:
+    1. Tokenizes and normalizes the input documents.
+    2. Builds a tokenized inverted index for efficient lookup.
+    3. Tokenizes and normalizes the query.
+    4. Finds candidate documents containing query tokens.
+    5. Ranks the candidate documents using TF-IDF and cosine similarity.
+    6. Returns document IDs sorted by descending relevance score.
+
+    Parameters
+    ----------
+    docs : list[Document]
+        List of documents to search in. Each Document must have 'id' and 'text' attributes.
+    query : str
+        The search query string provided by the user.
+
+    Returns
+    -------
+    list[str]
+        A list of document IDs sorted from most to least relevant to the query.
+        Returns an empty list if no documents or query tokens are found.
+
+    Examples
+    --------
+    >>> documents = [
+    ...     Document(id="doc1", text="Python is a programming language"),
+    ...     Document(id="doc2", text="Search engines use ranking algorithms"),
+    ...     Document(id="doc3", text="Python can be used for search engines")
+    ... ]
+    >>> search(documents, "python search")
+    ['doc3', 'doc1', 'doc2']
+
+    >>> search(documents, "ranking algorithms")
+    ['doc2']
+
+    >>> search(documents, "nonexistent term")
+    []
+
+    >>> search([], "python")
+    []
+
+    >>> search(documents, "")
+    []
     """
-    id: str
-    text: str
+    if not docs or not query:
+        return []
 
+    tokenized_documents = _tokenize_documents(docs)
+    if not tokenized_documents:
+        return []
 
-def search(docs: list[Doc], query: str) -> list[str]:
-    """
-    Поиск документов по точному совпадению.
-    Проверяется наличие слова в тексте документа.
+    tokenized_inverted_index = _build_tokenized_inverted_index(tokenized_documents)
 
-    Args:
-        docs (list[Doc]): Документы над которыми производится поиск.
-        query (str): Запрос на поиск документов.
+    tokenized_query = _tokenize_text(query)
+    if not tokenized_query:
+        return []
 
-    Returns:
-        list[str].
+    found_tokenized_documents = _find_tokenized_documents(tokenized_inverted_index, tokenized_query)
+    if not found_tokenized_documents:
+        return []
 
-    Examples:
-        >>> search([Doc("1", "foo bar")], "foo")
-        ["1"]
-        >>> search([Doc("1", "foo bars")], "bar")
-        []
-    """
+    sorted_rank_documents = _sorted_rank_tokenize_documents(tokenized_query,
+                                                            found_tokenized_documents)
 
-    # подготавливаем документы
-    # определяем токены документов
-    processed_docs = _preprocessing(docs)
-    # подготавливаем запрос
-    # определяем токен запроса
-    query_tokens = _preprocessing_text(query)
-    # создаем обратный индекс для документов
-    reverse_index = _make_reverse_index(processed_docs)
-    # фильтруем значения по индексу
-    filtered_processed_docs = _filter_reverse_index_processing_docs(reverse_index, query_tokens)
-    # производим расчет релевантности по алгоритму: TF (Term Frequency)
-    ranked_docs = _calculate_rank_by_tf(filtered_processed_docs, query_tokens)
-    # сортируем рассчитанные документы
-    sorted_ranked_docs = _sort_ranked_docs(ranked_docs)
-
-    return [
-        doc.id
-        for doc in sorted_ranked_docs
-    ]
-
-
-@dataclass
-class _ProcessingDoc:
-    """
-      Типизированная структура представления документа.
-
-      Attributes:
-          id (str): Идентификатор документа
-          tokens (list[str]): Обработанные токены текстового представления документа
-    """
-    id: str
-    tokens: list[str]
-
-
-def _preprocessing(docs: list[Doc]) -> list[_ProcessingDoc]:
-    res: list[_ProcessingDoc] = []
-    for doc in docs:
-        res.append(
-            _ProcessingDoc(doc.id, _preprocessing_text(doc.text))
-        )
-    return res
-
-
-def _preprocessing_text(text: str) -> list[str]:
-    res = []
-    for word in text.split(" "):
-        if word == "":
-            continue
-        term = re.findall(r'\w+', word)
-        res.append(''.join(term).lower())
-    return res
-
-
-@dataclass
-class _ReverseIndex:
-    """
-    Attributes:
-         index (dict[str, _ProcessingDoc): Представляет собой обратный индекс,
-            где ключом является слово, а значением ссылки на преобразованные документы.
-            _ProcessingDoc необходим для дальнейшей работы с документами.
-    """
-    index: dict[str, list[_ProcessingDoc]]
-
-
-def _make_reverse_index(docs: list[_ProcessingDoc]) -> _ReverseIndex:
-    index: dict[str, list[_ProcessingDoc]] = {}
-    for doc in docs:
-        for word in doc.tokens:
-            index.setdefault(word, []).append(doc)
-    return _ReverseIndex(index)
-
-
-def _filter_reverse_index_processing_docs(reverse_index: _ReverseIndex,
-                                          filter_keys: list[str]) -> list[_ProcessingDoc]:
-    unique_docs: dict[str, _ProcessingDoc] = {}
-    for word in filter_keys:
-        for doc in reverse_index.index.get(word, []):
-            unique_docs.setdefault(doc.id, doc)
-    return list(unique_docs.values())
-
-
-@dataclass
-class _RankedDoc:
-    """
-     Структура для представления документа с рассчитанным рангом релевантности.
-
-     Используется для хранения результатов этапа ранжирования перед финальной сортировкой.
-
-     Attributes:
-         id (str): Уникальный идентификатор документа
-         tokens (list[str]): Обработанные токены текстового содержания документа
-         rank (float): Расчет релевантности (например, TF, TF-IDF, BM25 score)
-     """
-    id: str
-    tokens: list[str]
-    rank: float
-
-
-def _calculate_rank_by_tf(docs: list[_ProcessingDoc], query_tokens: list[str]) -> list[_RankedDoc]:
-    return [
-        _RankedDoc(doc.id, doc.tokens, len(list(filter(lambda x: x in query_tokens, doc.tokens))))
-        for doc in docs
-    ]
-
-
-def _sort_ranked_docs(docs: list[_RankedDoc]) -> list[_RankedDoc]:
-    return sorted(docs, key=lambda doc: doc.rank, reverse=True)
+    return [doc.id for doc in sorted_rank_documents]
