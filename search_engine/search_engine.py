@@ -1,3 +1,5 @@
+from typing import overload
+
 from .find import _find_tokenized_documents
 from .indexing import _build_tokenized_inverted_index
 from .ranking import _sorted_rank_tokenize_documents
@@ -5,9 +7,22 @@ from .tokenize import _tokenize_documents, _tokenize_text
 from .types import Document
 
 
+# @overload is used only for type checking and IDE hints;
+# it does NOT create separate functions at runtime.
+@overload
 def search(docs: list[Document], query: str) -> list[str]:
+    ...
+
+
+@overload
+def search(docs: list[dict[str, str]], query: str) -> list[str]:
+    ...
+
+
+def search(untyped_docs, query: str) -> list[str]:
     """
-    Search for documents that match the given query and return their IDs sorted by relevance.
+    Search for documents that match the given query and return their
+        IDs sorted by relevance.
 
     This function performs the full search pipeline:
     1. Tokenizes and normalizes the input documents.
@@ -19,8 +34,9 @@ def search(docs: list[Document], query: str) -> list[str]:
 
     Parameters
     ----------
-    docs : list[Document]
-        List of documents to search in. Each Document must have 'id' and 'text' attributes.
+    untyped_docs : any
+        List of documents to search in. Each Document must have 'id'
+            and 'text' attributes.
     query : str
         The search query string provided by the user.
 
@@ -52,24 +68,33 @@ def search(docs: list[Document], query: str) -> list[str]:
     >>> search(documents, "")
     []
     """
-    if not docs or not query:
+    if not untyped_docs or not query:
         return []
+
+    docs = [
+        d if isinstance(d, Document) else Document(d["id"], d["text"])
+        for d in untyped_docs
+    ]
 
     tokenized_documents = _tokenize_documents(docs)
     if not tokenized_documents:
         return []
 
-    tokenized_inverted_index = _build_tokenized_inverted_index(tokenized_documents)
+    tokenized_inverted_index = _build_tokenized_inverted_index(
+        tokenized_documents)
 
     tokenized_query = _tokenize_text(query)
     if not tokenized_query:
         return []
 
-    found_tokenized_documents = _find_tokenized_documents(tokenized_inverted_index, tokenized_query)
+    found_tokenized_documents = _find_tokenized_documents(
+        tokenized_inverted_index,
+        tokenized_query)
     if not found_tokenized_documents:
         return []
 
-    sorted_rank_documents = _sorted_rank_tokenize_documents(tokenized_query,
-                                                            found_tokenized_documents)
+    sorted_rank_documents = _sorted_rank_tokenize_documents(
+        tokenized_query,
+        found_tokenized_documents)
 
     return [doc.id for doc in sorted_rank_documents]
